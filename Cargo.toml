@@ -3,4 +3,25 @@ name = "vulcan-ci"
 version = "0.1.0"
 edition = "2024"
 
+[lints.rust]
+unsafe_code = "forbid"
+missing_docs = "warn"
+# Allow unused code in scaffold phase - remove once implementation is complete
+dead_code = "allow"
+
+[lints.clippy]
+# Pedantic lints for better code quality
+pedantic = "warn"
+# Specific lints to enforce
+all = "warn"
+# Nursery lints (experimental but useful)
+nursery = "warn"
+
 [dependencies]
+
+[dependencies.uuid]
+version = "1.19.0"
+# Lets you generate random UUIDs
+features = [
+    "v4",
+]

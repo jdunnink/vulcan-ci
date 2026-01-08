@@ -1,0 +1,74 @@
+version: '3'
+
+vars:
+  PROJECT_NAME: vulcan-ci
+
+tasks:
+  default:
+    desc: Show available tasks
+    cmds:
+      - task --list
+
+  lint:
+    desc: Run clippy linter with warnings as errors
+    cmds:
+      - cargo clippy -- -D warnings
+
+  fmt:
+    desc: Format code with rustfmt
+    cmds:
+      - cargo fmt
+
+  fmt-check:
+    desc: Check if code is formatted correctly
+    cmds:
+      - cargo fmt -- --check
+
+  check:
+    desc: Fast compile check without building
+    cmds:
+      - cargo check
+
+  test:
+    desc: Run all tests
+    cmds:
+      - cargo test
+
+  build:
+    desc: Build the project in debug mode
+    cmds:
+      - cargo build
+
+  release:
+    desc: Build the project in release mode
+    cmds:
+      - cargo build --release
+
+  run:
+    desc: Run the project
+    cmds:
+      - cargo run
+
+  clean:
+    desc: Clean build artifacts
+    cmds:
+      - cargo clean
+
+  all:
+    desc: Format, lint, and build the project
+    deps:
+      - fmt
+      - lint
+      - build
+    cmds:
+      - echo "✅ All checks passed!"
+
+  ci:
+    desc: Run CI checks (format check, lint, test, build)
+    deps:
+      - fmt-check
+      - lint
+      - test
+      - build
+    cmds:
+      - echo "✅ CI checks passed!"

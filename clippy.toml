@@ -1,0 +1,8 @@
+# Clippy configuration for vulcan-ci
+
+# Deny common issues that should always be fixed
+# These will cause compilation to fail
+warn-on-all-wildcard-imports = false
+
+# Lint levels - these are suggestions that should be addressed
+# but won't fail the build by default
