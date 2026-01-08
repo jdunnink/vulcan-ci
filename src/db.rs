@@ -1,6 +1,6 @@
 use diesel::pg::PgConnection;
 use diesel::prelude::*;
-use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness};
+use diesel_migrations::{EmbeddedMigrations, MigrationHarness, embed_migrations};
 use std::env;
 
 pub const MIGRATIONS: EmbeddedMigrations = embed_migrations!("migrations");

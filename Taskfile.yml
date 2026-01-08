@@ -77,9 +77,7 @@ tasks:
   db-up:
     desc: Start the PostgreSQL database
     cmds:
-      - docker compose up -d
-      - echo "Waiting for database to be ready..."
-      - sleep 2
+      - docker compose up -d --wait
       - docker compose ps
 
   db-down:
@@ -91,9 +89,7 @@ tasks:
     desc: Reset the database (stop, remove volume, start fresh)
     cmds:
       - docker compose down -v
-      - docker compose up -d
-      - echo "Waiting for database to be ready..."
-      - sleep 2
+      - docker compose up -d --wait
       - diesel migration run
 
   db-migrate:

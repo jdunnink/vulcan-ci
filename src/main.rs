@@ -9,16 +9,19 @@
 
 mod db;
 mod models;
+mod repositories;
 mod schema;
 
-use diesel::prelude::*;
 use uuid::Uuid;
 
 use db::{establish_connection, run_migrations};
 use models::chain::{ChainStatus, NewChain};
 use models::fragment::{FragmentStatus, NewFragment};
 use models::worker::{NewWorker, WorkerStatus};
-use schema::{chains, fragments, workers};
+use repositories::{
+    ChainRepository, FragmentRepository, PgChainRepository, PgFragmentRepository,
+    PgWorkerRepository, WorkerRepository,
+};
 
 fn main() {
     // Load environment variables from .env file
@@ -38,91 +41,97 @@ fn main() {
     let tenant_id = Uuid::new_v4();
     println!("Tenant ID: {tenant_id}");
 
-    // Create a chain
+    // Create a chain using the repository
     let chain_id = Uuid::new_v4();
-    let new_chain = NewChain {
-        id: chain_id,
-        tenant_id,
-        status: ChainStatus::Active,
-        attempt: 1,
+    let chain = {
+        let mut repo = PgChainRepository::new(&mut connection);
+        let new_chain = NewChain {
+            id: chain_id,
+            tenant_id,
+            status: ChainStatus::Active,
+            attempt: 1,
+        };
+        repo.create(new_chain).expect("Failed to create chain")
     };
-
-    diesel::insert_into(chains::table)
-        .values(&new_chain)
-        .execute(&mut connection)
-        .expect("Error inserting chain");
 
     println!("\nChain created:");
-    println!("  ID: {chain_id}");
-    println!("  Status: {:?}", ChainStatus::Active);
+    println!("  ID: {}", chain.id);
+    println!("  Status: {:?}", chain.status);
+    println!("  Created at: {}", chain.created_at);
 
-    // Create fragments for the chain
-    let fragment1_id = Uuid::new_v4();
-    let new_fragment1 = NewFragment {
-        id: fragment1_id,
-        chain_id,
-        attempt: 1,
-        status: FragmentStatus::Active,
+    // Create fragments using the repository
+    let fragments = {
+        let mut repo = PgFragmentRepository::new(&mut connection);
+        let new_fragments = vec![
+            NewFragment {
+                id: Uuid::new_v4(),
+                chain_id,
+                attempt: 1,
+                status: FragmentStatus::Active,
+            },
+            NewFragment {
+                id: Uuid::new_v4(),
+                chain_id,
+                attempt: 1,
+                status: FragmentStatus::Active,
+            },
+        ];
+        repo.create_many(new_fragments)
+            .expect("Failed to create fragments")
     };
-
-    let fragment2_id = Uuid::new_v4();
-    let new_fragment2 = NewFragment {
-        id: fragment2_id,
-        chain_id,
-        attempt: 1,
-        status: FragmentStatus::Active,
-    };
-
-    diesel::insert_into(fragments::table)
-        .values(&[new_fragment1, new_fragment2])
-        .execute(&mut connection)
-        .expect("Error inserting fragments");
 
     println!("\nFragments created:");
-    println!("  Fragment 1 ID: {fragment1_id}");
-    println!("  Fragment 2 ID: {fragment2_id}");
+    for (i, fragment) in fragments.iter().enumerate() {
+        println!("  Fragment {} ID: {}", i + 1, fragment.id);
+    }
 
-    // Create a worker to process the chain
-    let worker_id = Uuid::new_v4();
-    let new_worker = NewWorker {
-        id: worker_id,
-        tenant_id,
-        status: WorkerStatus::Active,
-        current_chain_id: Some(chain_id),
-        previous_chain_id: None,
-        next_chain_id: None,
+    // Create a worker using the repository
+    let worker = {
+        let mut repo = PgWorkerRepository::new(&mut connection);
+        let new_worker = NewWorker {
+            id: Uuid::new_v4(),
+            tenant_id,
+            status: WorkerStatus::Active,
+            current_chain_id: Some(chain_id),
+            previous_chain_id: None,
+            next_chain_id: None,
+        };
+        repo.create(new_worker).expect("Failed to create worker")
     };
 
-    diesel::insert_into(workers::table)
-        .values(&new_worker)
-        .execute(&mut connection)
-        .expect("Error inserting worker");
-
     println!("\nWorker created:");
-    println!("  ID: {worker_id}");
-    println!("  Status: {:?}", WorkerStatus::Active);
-    println!("  Current Chain: {chain_id}");
+    println!("  ID: {}", worker.id);
+    println!("  Status: {:?}", worker.status);
+    println!("  Current Chain: {:?}", worker.current_chain_id);
 
-    // Query and display the counts
-    let worker_count: i64 = workers::table
-        .count()
-        .get_result(&mut connection)
-        .expect("Error counting workers");
+    // Query counts and demonstrate repository usage
+    let (worker_count, chain_count, fragment_count, chain_fragments) = {
+        let mut worker_repo = PgWorkerRepository::new(&mut connection);
+        let wc = worker_repo.count().expect("Failed to count workers");
 
-    let chain_count: i64 = chains::table
-        .count()
-        .get_result(&mut connection)
-        .expect("Error counting chains");
+        // Reborrow for chain repo
+        let mut chain_repo = PgChainRepository::new(worker_repo.conn());
+        let cc = chain_repo.count().expect("Failed to count chains");
 
-    let fragment_count: i64 = fragments::table
-        .count()
-        .get_result(&mut connection)
-        .expect("Error counting fragments");
+        // Reborrow for fragment repo
+        let mut fragment_repo = PgFragmentRepository::new(chain_repo.conn());
+        let fc = fragment_repo.count().expect("Failed to count fragments");
+        let cf = fragment_repo
+            .find_by_chain(chain_id)
+            .expect("Failed to find fragments");
+
+        (wc, cc, fc, cf)
+    };
 
     println!("\n--- Database Summary ---");
     println!("  Workers: {worker_count}");
     println!("  Chains: {chain_count}");
     println!("  Fragments: {fragment_count}");
+    println!(
+        "\nFragments in chain {}: {}",
+        chain_id,
+        chain_fragments.len()
+    );
 
     println!("\nVulcan CI initialized successfully!");
 }

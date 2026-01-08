@@ -1,5 +1,4 @@
 // @generated automatically by Diesel CLI.
-#![allow(clippy::wildcard_imports)]
 
 pub mod sql_types {
     #[derive(diesel::query_builder::QueryId, diesel::sql_types::SqlType)]
