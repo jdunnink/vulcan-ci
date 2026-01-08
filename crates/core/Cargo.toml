@@ -1,0 +1,18 @@
+[package]
+name = "vulcan-core"
+version.workspace = true
+edition.workspace = true
+
+[lints]
+workspace = true
+
+[features]
+default = []
+migrations = ["dep:diesel_migrations"]
+
+[dependencies]
+chrono.workspace = true
+diesel.workspace = true
+diesel-derive-enum.workspace = true
+diesel_migrations = { workspace = true, optional = true }
+uuid.workspace = true

@@ -1,15 +1,26 @@
-[package]
-name = "vulcan-ci"
+[workspace]
+resolver = "2"
+members = [
+    "crates/core",
+    "crates/workflow-trigger-processor",
+    "crates/chain-parser",
+    "crates/worker",
+    "crates/worker-orchestrator",
+    "crates/api",
+    "crates/metrics-api",
+]
+
+[workspace.package]
 version = "0.1.0"
 edition = "2024"
 
-[lints.rust]
+[workspace.lints.rust]
 unsafe_code = "forbid"
 missing_docs = "warn"
 # Allow unused code in scaffold phase - remove once implementation is complete
 dead_code = "allow"
 
-[lints.clippy]
+[workspace.lints.clippy]
 # Pedantic lints for better code quality
 pedantic = "warn"
 # Specific lints to enforce
@@ -17,18 +28,14 @@ all = "warn"
 # Nursery lints (experimental but useful)
 nursery = "warn"
 
-[dependencies]
+[workspace.dependencies]
+# Internal crates
+vulcan-core = { path = "crates/core" }
+
+# External dependencies
 chrono = "0.4"
+diesel = { version = "2.2", features = ["postgres", "uuid", "chrono"] }
+diesel_migrations = "2.2"
 diesel-derive-enum = { version = "2.1", features = ["postgres"] }
 dotenvy = "0.15"
-
-[dependencies.diesel]
-version = "2.2"
-features = ["postgres", "uuid", "chrono"]
-
-[dependencies.diesel_migrations]
-version = "2.2"
-
-[dependencies.uuid]
-version = "1.19.0"
-features = ["v4"]
+uuid = { version = "1.19.0", features = ["v4"] }

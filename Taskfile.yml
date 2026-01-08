@@ -12,42 +12,37 @@ tasks:
   lint:
     desc: Run clippy linter with warnings as errors
     cmds:
-      - cargo clippy -- -D warnings
+      - cargo clippy --workspace -- -D warnings
 
   fmt:
     desc: Format code with rustfmt
     cmds:
-      - cargo fmt
+      - cargo fmt --all
 
   fmt-check:
     desc: Check if code is formatted correctly
     cmds:
-      - cargo fmt -- --check
+      - cargo fmt --all -- --check
 
   check:
     desc: Fast compile check without building
     cmds:
-      - cargo check
+      - cargo check --workspace
 
   test:
     desc: Run all tests
     cmds:
-      - cargo test
+      - cargo test --workspace
 
   build:
     desc: Build the project in debug mode
     cmds:
-      - cargo build
+      - cargo build --workspace
 
   release:
     desc: Build the project in release mode
     cmds:
-      - cargo build --release
-
-  run:
-    desc: Run the project
-    cmds:
-      - cargo run
+      - cargo build --workspace --release
 
   clean:
     desc: Clean build artifacts
@@ -61,7 +56,7 @@ tasks:
       - lint
       - build
     cmds:
-      - echo "✅ All checks passed!"
+      - echo "All checks passed!"
 
   ci:
     desc: Run CI checks (format check, lint, test, build)
@@ -71,7 +66,38 @@ tasks:
       - test
       - build
     cmds:
-      - echo "✅ CI checks passed!"
+      - echo "CI checks passed!"
+
+  # Service run tasks
+  run-api:
+    desc: Run the API service
+    cmds:
+      - cargo run --package vulcan-api
+
+  run-metrics-api:
+    desc: Run the Metrics API service
+    cmds:
+      - cargo run --package vulcan-metrics-api
+
+  run-worker:
+    desc: Run the Worker service
+    cmds:
+      - cargo run --package vulcan-worker
+
+  run-worker-orchestrator:
+    desc: Run the Worker Orchestrator service
+    cmds:
+      - cargo run --package vulcan-worker-orchestrator
+
+  run-chain-parser:
+    desc: Run the Chain Parser service
+    cmds:
+      - cargo run --package vulcan-chain-parser
+
+  run-workflow-trigger-processor:
+    desc: Run the Workflow Trigger Processor service
+    cmds:
+      - cargo run --package vulcan-workflow-trigger-processor
 
   # Database tasks
   db-up:

@@ -1,0 +1,10 @@
+[package]
+name = "vulcan-metrics-api"
+version.workspace = true
+edition.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+vulcan-core.workspace = true

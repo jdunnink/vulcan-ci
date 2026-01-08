@@ -3,6 +3,9 @@
 //! This module provides traits and implementations for accessing
 //! domain entities in a storage-agnostic way.
 
+// Repository methods return Result types with self-explanatory error conditions
+#![allow(clippy::missing_errors_doc)]
+
 mod chain;
 mod error;
 mod fragment;
