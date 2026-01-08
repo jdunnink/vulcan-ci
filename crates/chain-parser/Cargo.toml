@@ -8,3 +8,9 @@ workspace = true
 
 [dependencies]
 vulcan-core.workspace = true
+kdl.workspace = true
+thiserror.workspace = true
+uuid.workspace = true
+
+[dev-dependencies]
+pretty_assertions.workspace = true

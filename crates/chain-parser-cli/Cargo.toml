@@ -1,0 +1,16 @@
+[package]
+name = "vulcan-chain-parser-cli"
+version.workspace = true
+edition.workspace = true
+description = "CLI tool for validating and inspecting Vulcan CI workflow files"
+
+[lints]
+workspace = true
+
+[[bin]]
+name = "vulcan-parse"
+path = "src/main.rs"
+
+[dependencies]
+vulcan-chain-parser.workspace = true
+uuid.workspace = true

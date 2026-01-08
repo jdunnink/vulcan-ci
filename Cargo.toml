@@ -4,6 +4,8 @@ members = [
     "crates/core",
     "crates/workflow-trigger-processor",
     "crates/chain-parser",
+    "crates/chain-parser-cli",
+    "crates/chain-parser-api",
     "crates/worker",
     "crates/worker-orchestrator",
     "crates/api",
@@ -31,11 +33,23 @@ nursery = "warn"
 [workspace.dependencies]
 # Internal crates
 vulcan-core = { path = "crates/core" }
+vulcan-chain-parser = { path = "crates/chain-parser" }
 
 # External dependencies
+axum = "0.8"
 chrono = "0.4"
+http-body-util = "0.1"
 diesel = { version = "2.2", features = ["postgres", "uuid", "chrono"] }
 diesel_migrations = "2.2"
 diesel-derive-enum = { version = "2.1", features = ["postgres"] }
 dotenvy = "0.15"
-uuid = { version = "1.19.0", features = ["v4"] }
+kdl = "6.5"
+pretty_assertions = "1.4"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+thiserror = "2.0"
+tokio = { version = "1.43", features = ["full"] }
+tower = { version = "0.5", features = ["util"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+uuid = { version = "1.19.0", features = ["v4", "serde"] }
