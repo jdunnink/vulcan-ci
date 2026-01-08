@@ -1,0 +1,39 @@
+// Workflow with parallel execution
+version "0.1"
+
+triggers "pull_request"
+
+chain {
+    machine "default-worker"
+
+    // Build first
+    fragment {
+        run "npm run build"
+        machine "build-worker"
+    }
+
+    // Run tests in parallel
+    parallel {
+        fragment {
+            run "npm run test:unit"
+            machine "test-worker"
+        }
+        fragment {
+            run "npm run test:integration"
+            machine "test-worker"
+        }
+        fragment {
+            run "npm run test:e2e"
+            machine "test-worker"
+        }
+        fragment {
+            run "npm run lint"
+            machine "lint-worker"
+        }
+    }
+
+    // Deploy after all tests pass
+    fragment {
+        run "npm run deploy:preview"
+    }
+}

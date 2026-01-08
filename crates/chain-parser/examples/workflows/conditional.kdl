@@ -1,0 +1,38 @@
+// Workflow with conditional execution
+version "0.1"
+
+triggers "push"
+
+chain {
+    machine "default-worker"
+
+    // Always build
+    fragment {
+        run "npm run build"
+    }
+
+    // Always test
+    fragment {
+        run "npm test"
+    }
+
+    // Deploy to production only on main branch
+    fragment {
+        condition "$BRANCH == 'main'"
+        run """
+            echo 'Deploying to production...'
+            npm run deploy:prod
+            """
+        machine "prod-worker"
+    }
+
+    // Deploy to staging on other branches
+    fragment {
+        condition "$BRANCH != 'main'"
+        run """
+            echo 'Deploying to staging...'
+            npm run deploy:staging
+            """
+        machine "staging-worker"
+    }
+}

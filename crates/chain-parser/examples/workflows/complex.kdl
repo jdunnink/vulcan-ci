@@ -1,0 +1,43 @@
+// Complex workflow combining imports, parallel, and conditionals
+version "0.1"
+
+triggers "pull_request" "push"
+
+chain {
+    machine "default-worker"
+
+    // Import shared build configuration
+    fragment {
+        from "https://github.com/org/shared-workflows/build.kdl"
+    }
+
+    // Run all checks in parallel
+    parallel {
+        fragment {
+            from "https://github.com/org/shared-workflows/test.kdl"
+        }
+        fragment {
+            run "npm run lint && npm run typecheck"
+            machine "lint-worker"
+        }
+        fragment {
+            condition "$TRIGGER == 'pull_request'"
+            run "npm audit && trivy fs ."
+            machine "security-worker"
+        }
+    }
+
+    // Deploy preview for PRs
+    fragment {
+        condition "$TRIGGER == 'pull_request'"
+        run "deploy-preview.sh --pr=$PR_NUMBER"
+        machine "preview-worker"
+    }
+
+    // Deploy to production for pushes to main
+    fragment {
+        condition "$TRIGGER == 'push' && $BRANCH == 'main'"
+        run "deploy-prod.sh"
+        machine "prod-worker"
+    }
+}

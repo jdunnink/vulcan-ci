@@ -1,0 +1,24 @@
+// Workflow that imports reusable fragments
+version "0.1"
+
+triggers "push"
+
+chain {
+    machine "default-worker"
+
+    // Import build steps (expands to multiple fragments)
+    fragment {
+        from "https://github.com/org/shared-workflows/build.kdl"
+    }
+
+    // Import test steps
+    fragment {
+        from "https://github.com/org/shared-workflows/test.kdl"
+    }
+
+    // Inline deploy step
+    fragment {
+        run "npm run deploy"
+        machine "deploy-worker"
+    }
+}

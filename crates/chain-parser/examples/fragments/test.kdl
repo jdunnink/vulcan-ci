@@ -1,0 +1,16 @@
+// Reusable test fragments
+// This file can be imported via: from "https://github.com/org/repo/fragments/test.kdl"
+
+fragment {
+    run """
+        echo 'Running unit tests...'
+        npm run test:unit -- --coverage
+        """
+}
+
+fragment {
+    run """
+        echo 'Running integration tests...'
+        npm run test:integration
+        """
+}

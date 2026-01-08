@@ -1,0 +1,28 @@
+// Simple sequential workflow
+version "0.1"
+
+triggers "tag"
+
+chain {
+    machine "default-worker"
+
+    fragment {
+        run """
+            echo 'Step 1: Build'
+            npm install
+            npm run build
+            """
+    }
+    fragment {
+        run """
+            echo 'Step 2: Test'
+            npm test
+            """
+    }
+    fragment {
+        run """
+            echo 'Step 3: Deploy'
+            npm run deploy
+            """
+    }
+}

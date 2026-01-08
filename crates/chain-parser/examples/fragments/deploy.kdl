@@ -1,0 +1,28 @@
+// Reusable deploy fragments with conditionals
+// This file can be imported via: from "https://github.com/org/repo/fragments/deploy.kdl"
+
+fragment {
+    run """
+        echo 'Pushing Docker image...'
+        docker push app:$COMMIT_SHA
+        """
+    machine "docker-worker"
+}
+
+fragment {
+    condition "$BRANCH == 'main'"
+    run """
+        echo 'Deploying to production...'
+        kubectl set image deployment/app app=app:$COMMIT_SHA
+        """
+    machine "k8s-worker"
+}
+
+fragment {
+    condition "$BRANCH != 'main'"
+    run """
+        echo 'Deploying to staging...'
+        kubectl --context=staging set image deployment/app app=app:$COMMIT_SHA
+        """
+    machine "k8s-worker"
+}

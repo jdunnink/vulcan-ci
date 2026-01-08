@@ -1,0 +1,24 @@
+// Reusable build fragments (no chain wrapper - just fragments)
+// This file can be imported via: from "https://github.com/org/repo/fragments/build.kdl"
+
+fragment {
+    run """
+        echo 'Installing dependencies...'
+        npm ci
+        """
+}
+
+fragment {
+    run """
+        echo 'Building application...'
+        npm run build
+        """
+}
+
+fragment {
+    run """
+        echo 'Building Docker image...'
+        docker build -t app:$COMMIT_SHA .
+        """
+    machine "docker-worker"
+}
