@@ -1,0 +1,20 @@
+services:
+  postgres:
+    image: postgres:17
+    container_name: vulcan-ci-db
+    environment:
+      POSTGRES_USER: vulcan
+      POSTGRES_PASSWORD: vulcan
+      POSTGRES_DB: vulcan_ci
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U vulcan -d vulcan_ci"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data:

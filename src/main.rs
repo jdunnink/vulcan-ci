@@ -7,70 +7,122 @@
 //!
 //! The system supports multi-tenancy, retry logic, and distributed execution.
 
+mod db;
 mod models;
+mod schema;
 
-use models::chain::{Chain, ChainStatus};
-use models::fragment::{Fragment, FragmentStatus};
-use models::worker::{Worker, WorkerStatus};
+use diesel::prelude::*;
 use uuid::Uuid;
 
+use db::{establish_connection, run_migrations};
+use models::chain::{ChainStatus, NewChain};
+use models::fragment::{FragmentStatus, NewFragment};
+use models::worker::{NewWorker, WorkerStatus};
+use schema::{chains, fragments, workers};
+
 fn main() {
-    println!("Vulcan CI - Initializing models...\n");
+    // Load environment variables from .env file
+    dotenvy::dotenv().ok();
+
+    println!("Vulcan CI - Initializing...\n");
+
+    // Establish database connection
+    let mut connection = establish_connection();
+    println!("Connected to database");
+
+    // Run migrations on startup
+    run_migrations(&mut connection);
+    println!("Migrations completed\n");
 
     // Initialize tenant ID (shared across all entities)
     let tenant_id = Uuid::new_v4();
     println!("Tenant ID: {tenant_id}");
 
-    // Create some fragments
-    let fragment1 = Fragment {
-        id: Uuid::new_v4(),
-        chain_id: Uuid::new_v4(), // Will be updated when chain is created
-        attempt: 1,
-        status: FragmentStatus::Active,
-    };
-    println!("\nFragment 1:");
-    println!("  ID: {}", fragment1.id);
-    println!("  Status: {:?}", fragment1.status);
-    println!("  Attempt: {}", fragment1.attempt);
-
-    let fragment2 = Fragment {
-        id: Uuid::new_v4(),
-        chain_id: fragment1.chain_id, // Same chain
-        attempt: 1,
-        status: FragmentStatus::Active,
-    };
-    println!("\nFragment 2:");
-    println!("  ID: {}", fragment2.id);
-    println!("  Status: {:?}", fragment2.status);
-
-    // Create a chain containing the fragments
-    let chain = Chain {
-        id: fragment1.chain_id,
+    // Create a chain
+    let chain_id = Uuid::new_v4();
+    let new_chain = NewChain {
+        id: chain_id,
         tenant_id,
         status: ChainStatus::Active,
         attempt: 1,
-        fragments: vec![fragment1.id, fragment2.id],
     };
-    println!("\nChain:");
-    println!("  ID: {}", chain.id);
-    println!("  Tenant ID: {}", chain.tenant_id);
-    println!("  Status: {:?}", chain.status);
-    println!("  Fragments: {} total", chain.fragments.len());
+
+    diesel::insert_into(chains::table)
+        .values(&new_chain)
+        .execute(&mut connection)
+        .expect("Error inserting chain");
+
+    println!("\nChain created:");
+    println!("  ID: {chain_id}");
+    println!("  Status: {:?}", ChainStatus::Active);
+
+    // Create fragments for the chain
+    let fragment1_id = Uuid::new_v4();
+    let new_fragment1 = NewFragment {
+        id: fragment1_id,
+        chain_id,
+        attempt: 1,
+        status: FragmentStatus::Active,
+    };
+
+    let fragment2_id = Uuid::new_v4();
+    let new_fragment2 = NewFragment {
+        id: fragment2_id,
+        chain_id,
+        attempt: 1,
+        status: FragmentStatus::Active,
+    };
+
+    diesel::insert_into(fragments::table)
+        .values(&[new_fragment1, new_fragment2])
+        .execute(&mut connection)
+        .expect("Error inserting fragments");
+
+    println!("\nFragments created:");
+    println!("  Fragment 1 ID: {fragment1_id}");
+    println!("  Fragment 2 ID: {fragment2_id}");
 
     // Create a worker to process the chain
-    let worker = Worker {
-        id: Uuid::new_v4(),
+    let worker_id = Uuid::new_v4();
+    let new_worker = NewWorker {
+        id: worker_id,
         tenant_id,
         status: WorkerStatus::Active,
-        current_chain_id: chain.id,
-        previous_chain_id: Uuid::nil(), // No previous chain
-        next_chain_id: Uuid::nil(),     // No next chain
+        current_chain_id: Some(chain_id),
+        previous_chain_id: None,
+        next_chain_id: None,
     };
-    println!("\nWorker:");
-    println!("  ID: {}", worker.id);
-    println!("  Tenant ID: {}", worker.tenant_id);
-    println!("  Status: {:?}", worker.status);
-    println!("  Current Chain: {}", worker.current_chain_id);
 
-    println!("\nModels initialized successfully!");
+    diesel::insert_into(workers::table)
+        .values(&new_worker)
+        .execute(&mut connection)
+        .expect("Error inserting worker");
+
+    println!("\nWorker created:");
+    println!("  ID: {worker_id}");
+    println!("  Status: {:?}", WorkerStatus::Active);
+    println!("  Current Chain: {chain_id}");
+
+    // Query and display the counts
+    let worker_count: i64 = workers::table
+        .count()
+        .get_result(&mut connection)
+        .expect("Error counting workers");
+
+    let chain_count: i64 = chains::table
+        .count()
+        .get_result(&mut connection)
+        .expect("Error counting chains");
+
+    let fragment_count: i64 = fragments::table
+        .count()
+        .get_result(&mut connection)
+        .expect("Error counting fragments");
+
+    println!("\n--- Database Summary ---");
+    println!("  Workers: {worker_count}");
+    println!("  Chains: {chain_count}");
+    println!("  Fragments: {fragment_count}");
+
+    println!("\nVulcan CI initialized successfully!");
 }

@@ -72,3 +72,41 @@ tasks:
       - build
     cmds:
       - echo "✅ CI checks passed!"
+
+  # Database tasks
+  db-up:
+    desc: Start the PostgreSQL database
+    cmds:
+      - docker compose up -d
+      - echo "Waiting for database to be ready..."
+      - sleep 2
+      - docker compose ps
+
+  db-down:
+    desc: Stop the PostgreSQL database
+    cmds:
+      - docker compose down
+
+  db-reset:
+    desc: Reset the database (stop, remove volume, start fresh)
+    cmds:
+      - docker compose down -v
+      - docker compose up -d
+      - echo "Waiting for database to be ready..."
+      - sleep 2
+      - diesel migration run
+
+  db-migrate:
+    desc: Run pending database migrations
+    cmds:
+      - diesel migration run
+
+  db-migrate-redo:
+    desc: Redo the last migration
+    cmds:
+      - diesel migration redo
+
+  db-psql:
+    desc: Open psql shell to the database
+    cmds:
+      - docker compose exec postgres psql -U vulcan -d vulcan_ci

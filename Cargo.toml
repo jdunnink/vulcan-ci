@@ -18,10 +18,17 @@ all = "warn"
 nursery = "warn"
 
 [dependencies]
+chrono = "0.4"
+diesel-derive-enum = { version = "2.1", features = ["postgres"] }
+dotenvy = "0.15"
+
+[dependencies.diesel]
+version = "2.2"
+features = ["postgres", "uuid", "chrono"]
+
+[dependencies.diesel_migrations]
+version = "2.2"
 
 [dependencies.uuid]
 version = "1.19.0"
-# Lets you generate random UUIDs
-features = [
-    "v4",
-]
+features = ["v4"]
