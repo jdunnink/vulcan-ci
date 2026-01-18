@@ -12,14 +12,14 @@ This document outlines the development roadmap for Vulcan CI, organized into pha
 | `vulcan-chain-parser` | KDL workflow parser with import resolution |
 | `vulcan-chain-parser-api` | HTTP API for parsing and storing workflows |
 | `vulcan-chain-parser-cli` | CLI tool for workflow validation |
+| `vulcan-worker` | Sandboxed script execution with bubblewrap |
+| `vulcan-worker-orchestrator` | Pull-based work distribution (MVP) |
 
 ### In Progress
 
 | Component | Status |
 |-----------|--------|
 | `vulcan-api` | Scaffold only |
-| `vulcan-worker` | Scaffold only |
-| `vulcan-worker-orchestrator` | **MVP Complete** - Pull-based work distribution |
 | `vulcan-workflow-trigger-processor` | Scaffold only |
 
 ---
@@ -28,12 +28,12 @@ This document outlines the development roadmap for Vulcan CI, organized into pha
 
 **Goal:** Achieve a functional self-hosted CI system capable of executing workflows end-to-end.
 
-### 1.1 Worker Orchestrator
+### 1.1 Worker Orchestrator ✓
 
 The central coordinator for workflow execution.
 
 - [x] Worker registration and heartbeat monitoring
-- [ ] Work queue management and prioritization
+- [x] Work queue management (optimistic locking for scalability)
 - [x] Fragment-to-worker assignment based on machine groups
 - [x] Parallel vs sequential execution coordination
 - [x] Failure detection and retry logic
@@ -47,19 +47,31 @@ The central coordinator for workflow execution.
 - Automatic fragment retry on worker failure (configurable max attempts)
 - Sequential/parallel scheduling based on fragment tree structure
 - Automatic chain completion when all fragments finish
+- Optimistic locking for concurrent worker claims (scales to thousands of workers)
 - Docker support with multi-stage build
 
-### 1.2 Worker Service
+### 1.2 Worker Service ✓
 
 Executes individual workflow fragments.
 
-- [ ] Fragment script execution engine (shell-based)
-- [ ] stdout/stderr capture and streaming
-- [ ] Status reporting to orchestrator
+- [x] Fragment script execution engine (shell-based)
+- [x] stdout/stderr capture
+- [x] Status reporting to orchestrator
 - [ ] Environment variable injection
-- [ ] Timeout enforcement
-- [ ] Resource limit support
-- [ ] Graceful shutdown with work handoff
+- [x] Timeout enforcement
+- [x] Resource limit support (via Docker + bubblewrap)
+- [x] Graceful shutdown (Ctrl+C handling)
+- [x] Security sandboxing (bubblewrap namespaces)
+
+**Implemented Features:**
+- Pull-based communication with orchestrator (register, heartbeat, request work, report result)
+- Script execution via `/bin/sh -c` with configurable timeout
+- Bubblewrap (bwrap) sandbox with namespace isolation (PID, network, UTS, IPC, mount)
+- Read-only root filesystem in sandbox, writable `/work` directory only
+- Exponential backoff retry logic for connection failures
+- Concurrent heartbeat task and work loop
+- Docker container hardening (non-root user, dropped capabilities, resource limits)
+- Clean environment in sandbox (minimal PATH, HOME, TMPDIR)
 
 ### 1.3 Workflow Trigger Processor
 

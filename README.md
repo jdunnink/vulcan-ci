@@ -192,14 +192,14 @@ docker compose down
 
 ## Status
 
-Vulcan CI is in active development. The core libraries (data models, workflow parser), parser tooling, and worker orchestrator MVP are complete. The worker execution service and trigger processor are next.
+Vulcan CI is in active development. The core execution engine is complete: libraries (data models, workflow parser), parser tooling, worker orchestrator, and worker execution service with security sandboxing. The trigger processor is next.
 
 | Component | Status |
 |-----------|--------|
 | Libraries | Complete |
 | Parser CLI & API | Complete |
-| Worker Orchestrator | MVP Complete |
-| Worker Service | In Progress |
+| Worker Orchestrator | Complete |
+| Worker Service | Complete |
 | Trigger Processor | Planned |
 
 See [ROADMAP.md](ROADMAP.md) for detailed implementation status and planned features.
