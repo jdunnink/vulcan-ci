@@ -63,6 +63,12 @@ pub trait FragmentRepository {
 
     /// Reset a fragment to pending status for retry.
     fn reset_for_retry(&mut self, fragment_id: Uuid) -> Result<Fragment>;
+
+    /// Atomically try to claim a fragment for a worker.
+    ///
+    /// Uses optimistic locking: only succeeds if fragment is still pending.
+    /// Returns `Some(fragment)` if claimed, `None` if already taken by another worker.
+    fn try_claim(&mut self, fragment_id: Uuid, worker_id: Uuid) -> Result<Option<Fragment>>;
 }
 
 /// `PostgreSQL` implementation of `FragmentRepository`.
@@ -263,5 +269,27 @@ impl FragmentRepository for PgFragmentRepository<'_> {
             .returning(Fragment::as_returning())
             .get_result(self.conn)?;
         Ok(updated)
+    }
+
+    fn try_claim(&mut self, fragment_id: Uuid, worker_id: Uuid) -> Result<Option<Fragment>> {
+        let now = Utc::now().naive_utc();
+
+        // Atomic update: only succeeds if fragment is still pending
+        // This is the key to optimistic locking - we use WHERE status = 'pending'
+        let result = diesel::update(
+            fragments::table
+                .filter(fragments::id.eq(fragment_id))
+                .filter(fragments::status.eq(FragmentStatus::Pending)),
+        )
+        .set((
+            fragments::status.eq(FragmentStatus::Running),
+            fragments::assigned_worker_id.eq(Some(worker_id)),
+            fragments::started_at.eq(Some(now)),
+        ))
+        .returning(Fragment::as_returning())
+        .get_result(self.conn)
+        .optional()?;
+
+        Ok(result)
     }
 }

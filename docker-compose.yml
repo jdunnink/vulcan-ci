@@ -37,5 +37,41 @@ services:
       postgres:
         condition: service_healthy
 
+  worker-1:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        SERVICE: vulcan-worker
+    container_name: vulcan-worker-1
+    environment:
+      ORCHESTRATOR_URL: http://worker-orchestrator:3002
+      TENANT_ID: 00000000-0000-0000-0000-000000000001
+      WORKER_GROUP: default
+      HEARTBEAT_INTERVAL_SECS: 10
+      POLL_INTERVAL_SECS: 5
+      SCRIPT_TIMEOUT_SECS: 300
+      RUST_LOG: vulcan_worker=debug
+    depends_on:
+      - worker-orchestrator
+
+  worker-2:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        SERVICE: vulcan-worker
+    container_name: vulcan-worker-2
+    environment:
+      ORCHESTRATOR_URL: http://worker-orchestrator:3002
+      TENANT_ID: 00000000-0000-0000-0000-000000000001
+      WORKER_GROUP: default
+      HEARTBEAT_INTERVAL_SECS: 10
+      POLL_INTERVAL_SECS: 5
+      SCRIPT_TIMEOUT_SECS: 300
+      RUST_LOG: vulcan_worker=debug
+    depends_on:
+      - worker-orchestrator
+
 volumes:
   postgres_data:

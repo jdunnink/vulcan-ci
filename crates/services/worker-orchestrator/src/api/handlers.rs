@@ -81,6 +81,9 @@ pub async fn heartbeat(
 }
 
 /// Worker requests work to execute.
+///
+/// Uses optimistic locking to atomically claim work, preventing race conditions
+/// when thousands of workers request work simultaneously.
 pub async fn request_work(
     State(state): State<AppState>,
     Json(request): Json<WorkRequest>,
@@ -94,24 +97,22 @@ pub async fn request_work(
             .ok_or(OrchestratorError::WorkerNotFound(request.worker_id))?
     };
 
-    // Use the scheduler to find work
+    // Use the scheduler to find and atomically claim work
+    // This uses optimistic locking: if another worker claims the fragment first,
+    // the scheduler will try the next eligible fragment
     let scheduler = Scheduler::new(&mut conn);
-    let fragment = scheduler.find_work_for_worker(&worker)?;
+    let fragment = scheduler.find_and_claim_work(&worker)?;
 
     match fragment {
         Some(fragment) => {
-            // Save fragment data before borrowing conn again
+            // Fragment is already claimed (status=Running, assigned_worker_id set)
+            // Just need to update worker's current_fragment_id
             let fragment_id = fragment.id;
             let chain_id = fragment.chain_id;
             let run_script = fragment.run_script.clone();
             let attempt = fragment.attempt;
             let worker_id = worker.id;
 
-            // Assign the fragment to the worker
-            {
-                let mut fragment_repo = PgFragmentRepository::new(&mut conn);
-                fragment_repo.start_execution(fragment_id, worker_id)?;
-            }
             {
                 let mut worker_repo = PgWorkerRepository::new(&mut conn);
                 worker_repo.assign_fragment(worker_id, fragment_id)?;
