@@ -69,6 +69,12 @@ pub trait FragmentRepository {
     /// Uses optimistic locking: only succeeds if fragment is still pending.
     /// Returns `Some(fragment)` if claimed, `None` if already taken by another worker.
     fn try_claim(&mut self, fragment_id: Uuid, worker_id: Uuid) -> Result<Option<Fragment>>;
+
+    /// Count pending fragments for a specific machine group (or all if None).
+    fn count_pending_by_machine(&mut self, machine: Option<&str>) -> Result<i64>;
+
+    /// Count running fragments for a specific machine group (or all if None).
+    fn count_running_by_machine(&mut self, machine: Option<&str>) -> Result<i64>;
 }
 
 /// `PostgreSQL` implementation of `FragmentRepository`.
@@ -291,5 +297,39 @@ impl FragmentRepository for PgFragmentRepository<'_> {
         .optional()?;
 
         Ok(result)
+    }
+
+    fn count_pending_by_machine(&mut self, machine: Option<&str>) -> Result<i64> {
+        let mut query = fragments::table
+            .filter(fragments::status.eq(FragmentStatus::Pending))
+            .into_boxed();
+
+        if let Some(m) = machine {
+            query = query.filter(
+                fragments::machine
+                    .eq(m)
+                    .or(fragments::machine.is_null()),
+            );
+        }
+
+        let count = query.count().get_result(self.conn)?;
+        Ok(count)
+    }
+
+    fn count_running_by_machine(&mut self, machine: Option<&str>) -> Result<i64> {
+        let mut query = fragments::table
+            .filter(fragments::status.eq(FragmentStatus::Running))
+            .into_boxed();
+
+        if let Some(m) = machine {
+            query = query.filter(
+                fragments::machine
+                    .eq(m)
+                    .or(fragments::machine.is_null()),
+            );
+        }
+
+        let count = query.count().get_result(self.conn)?;
+        Ok(count)
     }
 }

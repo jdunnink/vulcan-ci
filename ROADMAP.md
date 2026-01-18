@@ -14,6 +14,7 @@ This document outlines the development roadmap for Vulcan CI, organized into pha
 | `vulcan-chain-parser-cli` | CLI tool for workflow validation |
 | `vulcan-worker` | Sandboxed script execution with bubblewrap |
 | `vulcan-worker-orchestrator` | Pull-based work distribution (MVP) |
+| `vulcan-worker-controller` | Kubernetes-based worker auto-scaling |
 
 ### In Progress
 
@@ -49,8 +50,31 @@ The central coordinator for workflow execution.
 - Automatic chain completion when all fragments finish
 - Optimistic locking for concurrent worker claims (scales to thousands of workers)
 - Docker support with multi-stage build
+- Queue metrics API for scaling decisions (`/queue/metrics`)
+- Worker busy check API for graceful shutdown (`/workers/{id}/busy`)
 
-### 1.2 Worker Service ✓
+### 1.2 Worker Controller ✓
+
+Kubernetes-based auto-scaling for worker deployments.
+
+- [x] Queue depth polling from orchestrator
+- [x] Local configuration via environment variables
+- [x] Kubernetes Deployment scaling via kube-rs
+- [x] Scale-down cooldown to prevent flapping
+- [x] Graceful shutdown handling
+- [ ] Worker-controller authentication (API key / mTLS)
+- [ ] Multi-tenant controller isolation
+- [ ] Controller observability (metrics, tracing)
+- [ ] preStop hook for graceful worker termination
+
+**Implemented Features:**
+- Pull-based scaling: polls orchestrator for pending/running fragment counts
+- Configurable scaling algorithm: `desired = ceil(pending / target_pending_per_worker)`
+- Scale-down delay to prevent rapid scale oscillation
+- All configuration via environment variables (no remote config)
+- Kubernetes-native: uses kube-rs for Deployment patching
+
+### 1.3 Worker Service ✓
 
 Executes individual workflow fragments.
 
@@ -73,7 +97,7 @@ Executes individual workflow fragments.
 - Docker container hardening (non-root user, dropped capabilities, resource limits)
 - Clean environment in sandbox (minimal PATH, HOME, TMPDIR)
 
-### 1.3 Workflow Trigger Processor
+### 1.4 Workflow Trigger Processor
 
 Ingests events and initiates workflow execution.
 
@@ -84,7 +108,7 @@ Ingests events and initiates workflow execution.
 - [ ] Support for push, pull request, and tag events
 - [ ] Manual trigger API endpoint
 
-### 1.4 Main API
+### 1.5 Main API
 
 Management interface for workflows and workers.
 
@@ -93,7 +117,7 @@ Management interface for workflows and workers.
 - [ ] Execution logs retrieval
 - [ ] Health check endpoints
 
-### 1.5 Observability
+### 1.6 Observability
 
 Native OpenTelemetry support across all services.
 
@@ -254,3 +278,4 @@ See individual crate READMEs for implementation details:
 - [vulcan-workflow-trigger-processor](crates/services/workflow-trigger-processor/README.md)
 - [vulcan-chain-parser-api](crates/services/chain-parser-api/README.md)
 - [vulcan-chain-parser-cli](crates/services/chain-parser-cli/README.md)
+- [vulcan-worker-controller](crates/services/worker-controller/README.md)

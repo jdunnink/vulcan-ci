@@ -48,6 +48,12 @@ pub trait WorkerRepository {
 
     /// Clear a worker's current fragment assignment.
     fn clear_assignment(&mut self, worker_id: Uuid) -> Result<Worker>;
+
+    /// Count active workers for a specific machine group (or all if None).
+    fn count_active_by_machine_group(&mut self, machine_group: Option<&str>) -> Result<i64>;
+
+    /// Check if a worker is currently executing a fragment.
+    fn is_busy(&mut self, worker_id: Uuid) -> Result<Option<Uuid>>;
 }
 
 /// `PostgreSQL` implementation of `WorkerRepository`.
@@ -177,5 +183,27 @@ impl WorkerRepository for PgWorkerRepository<'_> {
             .returning(Worker::as_returning())
             .get_result(self.conn)?;
         Ok(updated)
+    }
+
+    fn count_active_by_machine_group(&mut self, machine_group: Option<&str>) -> Result<i64> {
+        let mut query = workers::table
+            .filter(workers::status.eq(WorkerStatus::Active))
+            .into_boxed();
+
+        if let Some(group) = machine_group {
+            query = query.filter(workers::machine_group.eq(group));
+        }
+
+        let count = query.count().get_result(self.conn)?;
+        Ok(count)
+    }
+
+    fn is_busy(&mut self, worker_id: Uuid) -> Result<Option<Uuid>> {
+        let worker = workers::table
+            .find(worker_id)
+            .first::<Worker>(self.conn)
+            .optional()?;
+
+        Ok(worker.and_then(|w| w.current_fragment_id))
     }
 }

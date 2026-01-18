@@ -110,3 +110,31 @@ pub struct HealthResponse {
     /// Service name.
     pub service: String,
 }
+
+// ============================================================================
+// Queue Metrics (for worker-controller scaling decisions)
+// ============================================================================
+
+/// Response with queue metrics for scaling decisions.
+#[derive(Debug, Serialize)]
+pub struct QueueMetricsResponse {
+    /// Number of pending fragments.
+    pub pending_fragments: i64,
+    /// Number of currently running fragments.
+    pub running_fragments: i64,
+    /// Number of active workers.
+    pub active_workers: i64,
+}
+
+// ============================================================================
+// Worker Busy Check (for preStop hook)
+// ============================================================================
+
+/// Response indicating if a worker is busy executing a fragment.
+#[derive(Debug, Serialize)]
+pub struct WorkerBusyResponse {
+    /// Whether the worker is currently executing a fragment.
+    pub busy: bool,
+    /// The fragment ID being executed, if any.
+    pub fragment_id: Option<Uuid>,
+}

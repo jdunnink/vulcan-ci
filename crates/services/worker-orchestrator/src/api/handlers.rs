@@ -7,6 +7,8 @@ use chrono::Utc;
 use tracing::{info, warn};
 use uuid::Uuid;
 
+use axum::extract::{Path, Query};
+
 use vulcan_core::models::worker::NewWorker;
 use vulcan_core::repositories::{
     ChainRepository, FragmentRepository, PgChainRepository, PgFragmentRepository,
@@ -14,8 +16,9 @@ use vulcan_core::repositories::{
 };
 
 use crate::api::dto::{
-    HeartbeatRequest, HeartbeatResponse, HealthResponse, RegisterWorkerRequest,
-    RegisterWorkerResponse, WorkRequest, WorkResponse, WorkResultRequest, WorkResultResponse,
+    HeartbeatRequest, HeartbeatResponse, HealthResponse, QueueMetricsResponse,
+    RegisterWorkerRequest, RegisterWorkerResponse, WorkRequest, WorkResponse, WorkResultRequest,
+    WorkResultResponse, WorkerBusyResponse,
 };
 use crate::error::{OrchestratorError, Result};
 use crate::orchestrator::scheduler::Scheduler;
@@ -219,4 +222,66 @@ fn check_chain_completion(
     }
 
     Ok(())
+}
+
+// ============================================================================
+// Queue Metrics (for worker-controller scaling decisions)
+// ============================================================================
+
+/// Query parameters for queue metrics endpoint.
+#[derive(Debug, serde::Deserialize)]
+pub struct QueueMetricsQuery {
+    /// Filter by machine group (optional).
+    pub machine_group: Option<String>,
+}
+
+/// Get queue metrics for scaling decisions.
+pub async fn queue_metrics(
+    State(state): State<AppState>,
+    Query(query): Query<QueueMetricsQuery>,
+) -> Result<Json<QueueMetricsResponse>> {
+    let mut conn = state.get_conn()?;
+
+    let machine_group = query.machine_group.as_deref();
+
+    let pending_fragments = {
+        let mut repo = PgFragmentRepository::new(&mut conn);
+        repo.count_pending_by_machine(machine_group)?
+    };
+
+    let running_fragments = {
+        let mut repo = PgFragmentRepository::new(&mut conn);
+        repo.count_running_by_machine(machine_group)?
+    };
+
+    let active_workers = {
+        let mut repo = PgWorkerRepository::new(&mut conn);
+        repo.count_active_by_machine_group(machine_group)?
+    };
+
+    Ok(Json(QueueMetricsResponse {
+        pending_fragments,
+        running_fragments,
+        active_workers,
+    }))
+}
+
+// ============================================================================
+// Worker Busy Check (for preStop hook)
+// ============================================================================
+
+/// Check if a worker is currently busy executing a fragment.
+pub async fn worker_busy(
+    State(state): State<AppState>,
+    Path(worker_id): Path<Uuid>,
+) -> Result<Json<WorkerBusyResponse>> {
+    let mut conn = state.get_conn()?;
+    let mut repo = PgWorkerRepository::new(&mut conn);
+
+    let fragment_id = repo.is_busy(worker_id)?;
+
+    Ok(Json(WorkerBusyResponse {
+        busy: fragment_id.is_some(),
+        fragment_id,
+    }))
 }

@@ -8,6 +8,7 @@ members = [
     "crates/services/api",
     "crates/services/worker",
     "crates/services/worker-orchestrator",
+    "crates/services/worker-controller",
     "crates/services/workflow-trigger-processor",
     "crates/services/chain-parser-api",
     "crates/services/chain-parser-cli",
@@ -55,3 +56,6 @@ tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 uuid = { version = "1.19.0", features = ["v4", "serde"] }
 reqwest = { version = "0.12", features = ["json"] }
+kube = { version = "0.98", features = ["runtime", "client", "derive"] }
+k8s-openapi = { version = "0.24", features = ["v1_32"] }
+futures = "0.3"

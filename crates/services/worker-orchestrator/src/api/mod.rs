@@ -14,7 +14,9 @@ pub fn create_router(state: AppState) -> Router {
         .route("/health", get(handlers::health))
         .route("/workers/register", post(handlers::register_worker))
         .route("/workers/heartbeat", post(handlers::heartbeat))
+        .route("/workers/{id}/busy", get(handlers::worker_busy))
         .route("/work/request", post(handlers::request_work))
         .route("/work/result", post(handlers::report_result))
+        .route("/queue/metrics", get(handlers::queue_metrics))
         .with_state(state)
 }
