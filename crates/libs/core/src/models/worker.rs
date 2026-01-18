@@ -16,8 +16,15 @@ pub enum WorkerStatus {
     Error,
 }
 
+impl WorkerStatus {
+    /// Returns true if the worker is available to accept work.
+    pub fn is_available(&self) -> bool {
+        matches!(self, WorkerStatus::Active)
+    }
+}
+
 /// Represents a worker entity in the database.
-#[derive(Debug, Queryable, Selectable, Identifiable)]
+#[derive(Debug, Clone, Queryable, Selectable, Identifiable)]
 #[diesel(table_name = workers)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
 pub struct Worker {
@@ -37,6 +44,12 @@ pub struct Worker {
     pub created_at: NaiveDateTime,
     /// When the worker was last updated.
     pub updated_at: NaiveDateTime,
+    /// When the worker last sent a heartbeat.
+    pub last_heartbeat_at: Option<NaiveDateTime>,
+    /// Machine group this worker belongs to.
+    pub machine_group: Option<String>,
+    /// Currently assigned fragment, if any.
+    pub current_fragment_id: Option<Uuid>,
 }
 
 /// Data for creating a new worker.
@@ -55,4 +68,39 @@ pub struct NewWorker {
     pub previous_chain_id: Option<Uuid>,
     /// Next chain to be assigned, if any.
     pub next_chain_id: Option<Uuid>,
+    /// Initial heartbeat timestamp.
+    pub last_heartbeat_at: Option<NaiveDateTime>,
+    /// Machine group this worker belongs to.
+    pub machine_group: Option<String>,
+    /// Initially assigned fragment, if any.
+    pub current_fragment_id: Option<Uuid>,
+}
+
+impl NewWorker {
+    /// Create a new worker with minimal required fields.
+    pub fn new(tenant_id: Uuid) -> Self {
+        Self {
+            id: Uuid::new_v4(),
+            tenant_id,
+            status: WorkerStatus::Active,
+            current_chain_id: None,
+            previous_chain_id: None,
+            next_chain_id: None,
+            last_heartbeat_at: None,
+            machine_group: None,
+            current_fragment_id: None,
+        }
+    }
+
+    /// Set the machine group for this worker.
+    pub fn with_machine_group(mut self, machine_group: String) -> Self {
+        self.machine_group = Some(machine_group);
+        self
+    }
+
+    /// Set the initial heartbeat timestamp.
+    pub fn with_heartbeat(mut self, heartbeat_at: NaiveDateTime) -> Self {
+        self.last_heartbeat_at = Some(heartbeat_at);
+        self
+    }
 }

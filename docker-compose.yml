@@ -16,5 +16,26 @@ services:
       timeout: 5s
       retries: 5
 
+  worker-orchestrator:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        SERVICE: vulcan-worker-orchestrator
+    container_name: vulcan-worker-orchestrator
+    environment:
+      DATABASE_URL: postgres://vulcan:vulcan@postgres:5432/vulcan_ci
+      HOST: 0.0.0.0
+      PORT: 3002
+      HEARTBEAT_TIMEOUT_SECS: 30
+      HEALTH_CHECK_INTERVAL_SECS: 10
+      MAX_RETRY_ATTEMPTS: 3
+      RUST_LOG: vulcan_worker_orchestrator=debug
+    ports:
+      - "3002:3002"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
 volumes:
   postgres_data:

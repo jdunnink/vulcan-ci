@@ -1,3 +1,4 @@
+use chrono::Utc;
 use diesel::pg::PgConnection;
 use diesel::prelude::*;
 use uuid::Uuid;
@@ -32,6 +33,18 @@ pub trait ChainRepository {
 
     /// Count all chains.
     fn count(&mut self) -> Result<i64>;
+
+    /// Update only the status of a chain.
+    fn update_status(&mut self, chain_id: Uuid, status: ChainStatus) -> Result<Chain>;
+
+    /// Mark a chain as started (sets status to Running and started_at timestamp).
+    fn mark_started(&mut self, chain_id: Uuid) -> Result<Chain>;
+
+    /// Mark a chain as completed (sets status to Completed and completed_at timestamp).
+    fn mark_completed(&mut self, chain_id: Uuid) -> Result<Chain>;
+
+    /// Mark a chain as failed (sets status to Failed and completed_at timestamp).
+    fn mark_failed(&mut self, chain_id: Uuid) -> Result<Chain>;
 }
 
 /// `PostgreSQL` implementation of `ChainRepository`.
@@ -109,5 +122,49 @@ impl ChainRepository for PgChainRepository<'_> {
     fn count(&mut self) -> Result<i64> {
         let count = chains::table.count().get_result(self.conn)?;
         Ok(count)
+    }
+
+    fn update_status(&mut self, chain_id: Uuid, status: ChainStatus) -> Result<Chain> {
+        let updated = diesel::update(chains::table.find(chain_id))
+            .set(chains::status.eq(status))
+            .returning(Chain::as_returning())
+            .get_result(self.conn)?;
+        Ok(updated)
+    }
+
+    fn mark_started(&mut self, chain_id: Uuid) -> Result<Chain> {
+        let now = Utc::now().naive_utc();
+        let updated = diesel::update(chains::table.find(chain_id))
+            .set((
+                chains::status.eq(ChainStatus::Running),
+                chains::started_at.eq(Some(now)),
+            ))
+            .returning(Chain::as_returning())
+            .get_result(self.conn)?;
+        Ok(updated)
+    }
+
+    fn mark_completed(&mut self, chain_id: Uuid) -> Result<Chain> {
+        let now = Utc::now().naive_utc();
+        let updated = diesel::update(chains::table.find(chain_id))
+            .set((
+                chains::status.eq(ChainStatus::Completed),
+                chains::completed_at.eq(Some(now)),
+            ))
+            .returning(Chain::as_returning())
+            .get_result(self.conn)?;
+        Ok(updated)
+    }
+
+    fn mark_failed(&mut self, chain_id: Uuid) -> Result<Chain> {
+        let now = Utc::now().naive_utc();
+        let updated = diesel::update(chains::table.find(chain_id))
+            .set((
+                chains::status.eq(ChainStatus::Failed),
+                chains::completed_at.eq(Some(now)),
+            ))
+            .returning(Chain::as_returning())
+            .get_result(self.conn)?;
+        Ok(updated)
     }
 }

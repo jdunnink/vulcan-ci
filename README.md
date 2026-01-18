@@ -164,19 +164,43 @@ vulcan-ci/
 │
 ├── migrations/                      # Diesel database migrations
 ├── Cargo.toml                       # Workspace configuration
-├── docker-compose.yml               # Local PostgreSQL
+├── Dockerfile                       # Multi-stage build for services
+├── docker-compose.yml               # PostgreSQL + services
 └── Taskfile.yml                     # Development tasks
+```
+
+## Docker
+
+Run the full stack with Docker Compose:
+
+```bash
+# Start all services
+docker compose up -d
+
+# Run database migrations
+task db-migrate
+
+# Check status
+docker compose ps
+
+# View logs
+docker compose logs -f worker-orchestrator
+
+# Stop services
+docker compose down
 ```
 
 ## Status
 
-Vulcan CI is in active development. The core libraries (data models, workflow parser) and parser tooling are complete. The execution engine (orchestrator, workers, triggers) is currently being implemented.
+Vulcan CI is in active development. The core libraries (data models, workflow parser), parser tooling, and worker orchestrator MVP are complete. The worker execution service and trigger processor are next.
 
 | Component | Status |
 |-----------|--------|
 | Libraries | Complete |
 | Parser CLI & API | Complete |
-| Execution Engine | In Progress |
+| Worker Orchestrator | MVP Complete |
+| Worker Service | In Progress |
+| Trigger Processor | Planned |
 
 See [ROADMAP.md](ROADMAP.md) for detailed implementation status and planned features.
 

@@ -14,6 +14,31 @@ pub enum FragmentStatus {
     Suspended,
     /// Fragment encountered an error.
     Error,
+    /// Fragment is waiting to be executed.
+    Pending,
+    /// Fragment is currently being executed.
+    Running,
+    /// Fragment execution completed successfully.
+    Completed,
+    /// Fragment execution failed.
+    Failed,
+}
+
+impl FragmentStatus {
+    /// Returns true if the fragment is in a terminal state.
+    pub fn is_terminal(&self) -> bool {
+        matches!(self, FragmentStatus::Completed | FragmentStatus::Failed)
+    }
+
+    /// Returns true if the fragment is ready to be scheduled.
+    pub fn is_pending(&self) -> bool {
+        matches!(self, FragmentStatus::Pending)
+    }
+
+    /// Returns true if the fragment completed successfully.
+    pub fn is_success(&self) -> bool {
+        matches!(self, FragmentStatus::Completed)
+    }
 }
 
 /// Type of a fragment (stored in DB).
@@ -70,6 +95,16 @@ pub struct Fragment {
     pub condition: Option<String>,
     /// URL this fragment was imported from (None if defined inline).
     pub source_url: Option<String>,
+    /// Worker currently assigned to execute this fragment.
+    pub assigned_worker_id: Option<Uuid>,
+    /// When execution started.
+    pub started_at: Option<NaiveDateTime>,
+    /// When execution completed.
+    pub completed_at: Option<NaiveDateTime>,
+    /// Exit code from execution (0 = success).
+    pub exit_code: Option<i32>,
+    /// Error message if execution failed.
+    pub error_message: Option<String>,
 }
 
 /// Data for creating a new fragment.

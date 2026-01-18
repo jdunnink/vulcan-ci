@@ -14,6 +14,31 @@ pub enum ChainStatus {
     Suspended,
     /// Chain encountered an error.
     Error,
+    /// Chain is waiting to be executed.
+    Pending,
+    /// Chain is currently being executed.
+    Running,
+    /// Chain execution completed successfully.
+    Completed,
+    /// Chain execution failed.
+    Failed,
+}
+
+impl ChainStatus {
+    /// Returns true if the chain is in a terminal state.
+    pub fn is_terminal(&self) -> bool {
+        matches!(self, ChainStatus::Completed | ChainStatus::Failed)
+    }
+
+    /// Returns true if the chain is ready to be scheduled.
+    pub fn is_pending(&self) -> bool {
+        matches!(self, ChainStatus::Pending)
+    }
+
+    /// Returns true if the chain completed successfully.
+    pub fn is_success(&self) -> bool {
+        matches!(self, ChainStatus::Completed)
+    }
 }
 
 /// Type of trigger that initiated the chain.
@@ -64,6 +89,10 @@ pub struct Chain {
     pub trigger_ref: Option<String>,
     /// Default machine/worker group for fragments that don't specify one.
     pub default_machine: Option<String>,
+    /// When execution started.
+    pub started_at: Option<NaiveDateTime>,
+    /// When execution completed.
+    pub completed_at: Option<NaiveDateTime>,
 }
 
 /// Data for creating a new chain.

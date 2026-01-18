@@ -38,9 +38,9 @@ vulcan-chain-parser = { path = "crates/libs/chain-parser" }
 
 # External dependencies
 axum = "0.8"
-chrono = "0.4"
+chrono = { version = "0.4", features = ["serde"] }
 http-body-util = "0.1"
-diesel = { version = "2.2", features = ["postgres", "uuid", "chrono"] }
+diesel = { version = "2.2", features = ["postgres", "uuid", "chrono", "r2d2"] }
 diesel_migrations = "2.2"
 diesel-derive-enum = { version = "2.1", features = ["postgres"] }
 dotenvy = "0.15"

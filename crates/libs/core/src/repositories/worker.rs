@@ -1,3 +1,4 @@
+use chrono::NaiveDateTime;
 use diesel::pg::PgConnection;
 use diesel::prelude::*;
 use uuid::Uuid;
@@ -32,6 +33,21 @@ pub trait WorkerRepository {
 
     /// Count all workers.
     fn count(&mut self) -> Result<i64>;
+
+    /// Find workers whose heartbeat is older than the given threshold (dead workers).
+    fn find_dead_workers(&mut self, threshold: NaiveDateTime) -> Result<Vec<Worker>>;
+
+    /// Find idle workers (active status, no current fragment) optionally filtered by machine group.
+    fn find_idle_by_machine_group(&mut self, machine_group: Option<&str>) -> Result<Vec<Worker>>;
+
+    /// Update a worker's heartbeat timestamp to now.
+    fn update_heartbeat(&mut self, worker_id: Uuid) -> Result<Worker>;
+
+    /// Assign a fragment to a worker.
+    fn assign_fragment(&mut self, worker_id: Uuid, fragment_id: Uuid) -> Result<Worker>;
+
+    /// Clear a worker's current fragment assignment.
+    fn clear_assignment(&mut self, worker_id: Uuid) -> Result<Worker>;
 }
 
 /// `PostgreSQL` implementation of `WorkerRepository`.
@@ -97,6 +113,9 @@ impl WorkerRepository for PgWorkerRepository<'_> {
                 workers::current_chain_id.eq(&worker.current_chain_id),
                 workers::previous_chain_id.eq(&worker.previous_chain_id),
                 workers::next_chain_id.eq(&worker.next_chain_id),
+                workers::last_heartbeat_at.eq(&worker.last_heartbeat_at),
+                workers::machine_group.eq(&worker.machine_group),
+                workers::current_fragment_id.eq(&worker.current_fragment_id),
             ))
             .returning(Worker::as_returning())
             .get_result(self.conn)?;
@@ -111,5 +130,52 @@ impl WorkerRepository for PgWorkerRepository<'_> {
     fn count(&mut self) -> Result<i64> {
         let count = workers::table.count().get_result(self.conn)?;
         Ok(count)
+    }
+
+    fn find_dead_workers(&mut self, threshold: NaiveDateTime) -> Result<Vec<Worker>> {
+        let results = workers::table
+            .filter(workers::status.eq(WorkerStatus::Active))
+            .filter(workers::last_heartbeat_at.lt(threshold))
+            .load::<Worker>(self.conn)?;
+        Ok(results)
+    }
+
+    fn find_idle_by_machine_group(&mut self, machine_group: Option<&str>) -> Result<Vec<Worker>> {
+        let mut query = workers::table
+            .filter(workers::status.eq(WorkerStatus::Active))
+            .filter(workers::current_fragment_id.is_null())
+            .into_boxed();
+
+        if let Some(group) = machine_group {
+            query = query.filter(workers::machine_group.eq(group));
+        }
+
+        let results = query.load::<Worker>(self.conn)?;
+        Ok(results)
+    }
+
+    fn update_heartbeat(&mut self, worker_id: Uuid) -> Result<Worker> {
+        let now = chrono::Utc::now().naive_utc();
+        let updated = diesel::update(workers::table.find(worker_id))
+            .set(workers::last_heartbeat_at.eq(now))
+            .returning(Worker::as_returning())
+            .get_result(self.conn)?;
+        Ok(updated)
+    }
+
+    fn assign_fragment(&mut self, worker_id: Uuid, fragment_id: Uuid) -> Result<Worker> {
+        let updated = diesel::update(workers::table.find(worker_id))
+            .set(workers::current_fragment_id.eq(Some(fragment_id)))
+            .returning(Worker::as_returning())
+            .get_result(self.conn)?;
+        Ok(updated)
+    }
+
+    fn clear_assignment(&mut self, worker_id: Uuid) -> Result<Worker> {
+        let updated = diesel::update(workers::table.find(worker_id))
+            .set(workers::current_fragment_id.eq(None::<Uuid>))
+            .returning(Worker::as_returning())
+            .get_result(self.conn)?;
+        Ok(updated)
     }
 }

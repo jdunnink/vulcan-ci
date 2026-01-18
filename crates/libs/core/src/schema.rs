@@ -41,6 +41,8 @@ diesel::table! {
         trigger -> Nullable<TriggerType>,
         trigger_ref -> Nullable<Text>,
         default_machine -> Nullable<Text>,
+        started_at -> Nullable<Timestamp>,
+        completed_at -> Nullable<Timestamp>,
     }
 }
 
@@ -65,6 +67,11 @@ diesel::table! {
         is_parallel -> Bool,
         condition -> Nullable<Text>,
         source_url -> Nullable<Text>,
+        assigned_worker_id -> Nullable<Uuid>,
+        started_at -> Nullable<Timestamp>,
+        completed_at -> Nullable<Timestamp>,
+        exit_code -> Nullable<Int4>,
+        error_message -> Nullable<Text>,
     }
 }
 
@@ -81,6 +88,9 @@ diesel::table! {
         next_chain_id -> Nullable<Uuid>,
         created_at -> Timestamp,
         updated_at -> Timestamp,
+        last_heartbeat_at -> Nullable<Timestamp>,
+        machine_group -> Nullable<Text>,
+        current_fragment_id -> Nullable<Uuid>,
     }
 }
 

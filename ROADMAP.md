@@ -19,7 +19,7 @@ This document outlines the development roadmap for Vulcan CI, organized into pha
 |-----------|--------|
 | `vulcan-api` | Scaffold only |
 | `vulcan-worker` | Scaffold only |
-| `vulcan-worker-orchestrator` | Scaffold only |
+| `vulcan-worker-orchestrator` | **MVP Complete** - Pull-based work distribution |
 | `vulcan-workflow-trigger-processor` | Scaffold only |
 
 ---
@@ -32,13 +32,22 @@ This document outlines the development roadmap for Vulcan CI, organized into pha
 
 The central coordinator for workflow execution.
 
-- [ ] Worker registration and heartbeat monitoring
+- [x] Worker registration and heartbeat monitoring
 - [ ] Work queue management and prioritization
-- [ ] Fragment-to-worker assignment based on machine groups
-- [ ] Parallel vs sequential execution coordination
-- [ ] Failure detection and retry logic
-- [ ] Chain/fragment status updates in database
-- [ ] Dead worker detection and work reassignment
+- [x] Fragment-to-worker assignment based on machine groups
+- [x] Parallel vs sequential execution coordination
+- [x] Failure detection and retry logic
+- [x] Chain/fragment status updates in database
+- [x] Dead worker detection and work reassignment
+
+**Implemented Features:**
+- Pull-based communication model (workers poll for work)
+- HTTP API endpoints: `/workers/register`, `/workers/heartbeat`, `/work/request`, `/work/result`
+- Background health monitor for detecting dead workers
+- Automatic fragment retry on worker failure (configurable max attempts)
+- Sequential/parallel scheduling based on fragment tree structure
+- Automatic chain completion when all fragments finish
+- Docker support with multi-stage build
 
 ### 1.2 Worker Service
 
