@@ -1236,13 +1236,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "vulcan-metrics-api"
-version = "0.1.0"
-dependencies = [
- "vulcan-core",
-]
-
-[[package]]
 name = "vulcan-worker"
 version = "0.1.0"
 dependencies = [

@@ -27,7 +27,7 @@ pub fn run_migrations(connection: &mut PgConnection) {
     use diesel_migrations::{EmbeddedMigrations, MigrationHarness};
 
     pub const MIGRATIONS: EmbeddedMigrations =
-        diesel_migrations::embed_migrations!("../../migrations");
+        diesel_migrations::embed_migrations!("../../../migrations");
 
     connection
         .run_pending_migrations(MIGRATIONS)

@@ -1,15 +1,16 @@
 [workspace]
 resolver = "2"
 members = [
-    "crates/core",
-    "crates/workflow-trigger-processor",
-    "crates/chain-parser",
-    "crates/chain-parser-cli",
-    "crates/chain-parser-api",
-    "crates/worker",
-    "crates/worker-orchestrator",
-    "crates/api",
-    "crates/metrics-api",
+    # Libraries
+    "crates/libs/core",
+    "crates/libs/chain-parser",
+    # Services
+    "crates/services/api",
+    "crates/services/worker",
+    "crates/services/worker-orchestrator",
+    "crates/services/workflow-trigger-processor",
+    "crates/services/chain-parser-api",
+    "crates/services/chain-parser-cli",
 ]
 
 [workspace.package]
@@ -32,8 +33,8 @@ nursery = "warn"
 
 [workspace.dependencies]
 # Internal crates
-vulcan-core = { path = "crates/core" }
-vulcan-chain-parser = { path = "crates/chain-parser" }
+vulcan-core = { path = "crates/libs/core" }
+vulcan-chain-parser = { path = "crates/libs/chain-parser" }
 
 # External dependencies
 axum = "0.8"
