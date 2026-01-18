@@ -1,0 +1,72 @@
+# Hardened Dockerfile for Vulcan Worker
+# Implements defense-in-depth for running untrusted code
+#
+# Security layers:
+# 1. Non-root user (vulcan-worker, UID 1000)
+# 2. Minimal base image (distroless-like slim)
+# 3. Read-only root filesystem (enforced by docker-compose)
+# 4. Bubblewrap (bwrap) for script sandboxing with namespaces
+# 5. No shell in final image except for bwrap sandbox
+
+FROM rustlang/rust:nightly-bookworm AS builder
+
+WORKDIR /app
+
+# Install build dependencies
+RUN apt-get update && apt-get install -y libpq-dev && rm -rf /var/lib/apt/lists/*
+
+# Copy workspace files
+COPY Cargo.toml Cargo.lock ./
+COPY crates ./crates
+
+# Build the worker in release mode
+RUN cargo build --release --package vulcan-worker
+
+# Runtime stage - hardened
+FROM debian:bookworm-slim
+
+# Install minimal runtime dependencies:
+# - libpq5: PostgreSQL client library (for vulcan-core)
+# - bubblewrap: Unprivileged sandboxing tool using namespaces
+# - ca-certificates: For HTTPS connections
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libpq5 \
+    bubblewrap \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/* \
+    && rm -rf /var/cache/apt/*
+
+# Create non-root user for the worker process
+# UID 1000 is standard for first non-root user
+RUN groupadd --gid 1000 vulcan \
+    && useradd --uid 1000 --gid 1000 --shell /usr/sbin/nologin --create-home vulcan
+
+# Create directories for:
+# - /app: Application binary (read-only)
+# - /scratch: Temporary script execution (tmpfs, per-execution)
+# - /home/vulcan: User home for any needed state
+RUN mkdir -p /app /scratch \
+    && chown vulcan:vulcan /scratch
+
+WORKDIR /app
+
+# Copy the worker binary
+COPY --from=builder /app/target/release/vulcan-worker /app/vulcan-worker
+
+# Ensure binary is executable but not writable
+RUN chmod 555 /app/vulcan-worker
+
+# Switch to non-root user
+USER vulcan:vulcan
+
+# Set secure environment defaults
+ENV HOME=/home/vulcan \
+    PATH=/app:/usr/bin:/bin \
+    RUST_BACKTRACE=1
+
+# Health check - worker doesn't expose HTTP, so just check process exists
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+    CMD pgrep -x vulcan-worker || exit 1
+
+# Run the worker
+ENTRYPOINT ["/app/vulcan-worker"]

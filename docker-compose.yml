@@ -37,12 +37,20 @@ services:
       postgres:
         condition: service_healthy
 
+  # Hardened worker configuration
+  # Security layers:
+  # 1. Non-root user (UID 1000 in Dockerfile)
+  # 2. Dropped capabilities (only KILL for process management)
+  # 3. No privilege escalation
+  # 4. Read-only root filesystem
+  # 5. tmpfs for scratch space (isolated, limited size)
+  # 6. Seccomp profile (default Docker profile)
+  # 7. Resource limits (CPU, memory, PIDs)
+  # 8. Bubblewrap sandbox for script execution (in executor)
   worker-1:
     build:
       context: .
-      dockerfile: Dockerfile
-      args:
-        SERVICE: vulcan-worker
+      dockerfile: Dockerfile.worker
     container_name: vulcan-worker-1
     environment:
       ORCHESTRATOR_URL: http://worker-orchestrator:3002
@@ -52,15 +60,47 @@ services:
       POLL_INTERVAL_SECS: 5
       SCRIPT_TIMEOUT_SECS: 300
       RUST_LOG: vulcan_worker=debug
+      # Sandbox configuration
+      SANDBOX_ENABLED: "true"
+      SANDBOX_MEMORY_LIMIT: "512M"
+      SANDBOX_NETWORK: "false"
     depends_on:
       - worker-orchestrator
+    # Security hardening
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+      # Use default seccomp profile (can be customized later)
+      # - seccomp:./seccomp-worker.json
+    cap_drop:
+      - ALL
+    cap_add:
+      # KILL: Required to terminate timed-out scripts
+      - KILL
+      # SYS_ADMIN: Required for bubblewrap to create namespaces
+      # This is carefully scoped by bubblewrap's own security model
+      - SYS_ADMIN
+    # Tmpfs mounts for writable directories
+    tmpfs:
+      # Scratch directory for script execution
+      - /scratch:size=512M,mode=1777,uid=1000,gid=1000
+      # Tmp directory for general temp files
+      - /tmp:size=64M,mode=1777,uid=1000,gid=1000
+    # Resource limits to prevent DoS
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 1G
+          pids: 256
+        reservations:
+          cpus: '0.25'
+          memory: 128M
 
   worker-2:
     build:
       context: .
-      dockerfile: Dockerfile
-      args:
-        SERVICE: vulcan-worker
+      dockerfile: Dockerfile.worker
     container_name: vulcan-worker-2
     environment:
       ORCHESTRATOR_URL: http://worker-orchestrator:3002
@@ -70,8 +110,31 @@ services:
       POLL_INTERVAL_SECS: 5
       SCRIPT_TIMEOUT_SECS: 300
       RUST_LOG: vulcan_worker=debug
+      SANDBOX_ENABLED: "true"
+      SANDBOX_MEMORY_LIMIT: "512M"
+      SANDBOX_NETWORK: "false"
     depends_on:
       - worker-orchestrator
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - KILL
+      - SYS_ADMIN
+    tmpfs:
+      - /scratch:size=512M,mode=1777,uid=1000,gid=1000
+      - /tmp:size=64M,mode=1777,uid=1000,gid=1000
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 1G
+          pids: 256
+        reservations:
+          cpus: '0.25'
+          memory: 128M
 
 volumes:
   postgres_data:

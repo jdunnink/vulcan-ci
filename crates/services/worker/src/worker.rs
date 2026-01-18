@@ -36,7 +36,7 @@ impl Worker {
     /// Returns an error if the HTTP client cannot be created.
     pub fn new(config: Config) -> Result<Self> {
         let client = OrchestratorClient::new(&config)?;
-        let executor = Executor::new(config.script_timeout);
+        let executor = Executor::new(config.script_timeout, config.sandbox.clone());
 
         Ok(Self {
             config,

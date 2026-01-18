@@ -7,6 +7,30 @@ use uuid::Uuid;
 
 use crate::error::{Result, WorkerError};
 
+/// Sandbox configuration for script execution.
+#[derive(Debug, Clone)]
+pub struct SandboxConfig {
+    /// Whether sandbox is enabled.
+    pub enabled: bool,
+    /// Memory limit for sandboxed processes (e.g., "512M").
+    pub memory_limit: String,
+    /// Whether to allow network access in sandbox.
+    pub network: bool,
+    /// Scratch directory for script execution.
+    pub scratch_dir: String,
+}
+
+impl Default for SandboxConfig {
+    fn default() -> Self {
+        Self {
+            enabled: true,
+            memory_limit: "512M".to_string(),
+            network: false,
+            scratch_dir: "/scratch".to_string(),
+        }
+    }
+}
+
 /// Worker configuration loaded from environment variables.
 #[derive(Debug, Clone)]
 pub struct Config {
@@ -24,6 +48,8 @@ pub struct Config {
     pub request_timeout: Duration,
     /// Script execution timeout.
     pub script_timeout: Duration,
+    /// Sandbox configuration.
+    pub sandbox: SandboxConfig,
 }
 
 impl Config {
@@ -71,6 +97,21 @@ impl Config {
                 .unwrap_or(300),
         );
 
+        let sandbox = SandboxConfig {
+            enabled: env::var("SANDBOX_ENABLED")
+                .ok()
+                .and_then(|s| s.parse().ok())
+                .unwrap_or(true),
+            memory_limit: env::var("SANDBOX_MEMORY_LIMIT")
+                .unwrap_or_else(|_| "512M".to_string()),
+            network: env::var("SANDBOX_NETWORK")
+                .ok()
+                .and_then(|s| s.parse().ok())
+                .unwrap_or(false),
+            scratch_dir: env::var("SANDBOX_SCRATCH_DIR")
+                .unwrap_or_else(|_| "/scratch".to_string()),
+        };
+
         Ok(Self {
             orchestrator_url,
             tenant_id,
@@ -79,6 +120,7 @@ impl Config {
             poll_interval,
             request_timeout,
             script_timeout,
+            sandbox,
         })
     }
 }
