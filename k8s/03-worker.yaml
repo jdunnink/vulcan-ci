@@ -1,0 +1,74 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: worker-config
+  namespace: vulcan
+data:
+  ORCHESTRATOR_URL: "http://worker-orchestrator:3002"
+  TENANT_ID: "00000000-0000-0000-0000-000000000001"
+  WORKER_GROUP: "default"
+  HEARTBEAT_INTERVAL_SECS: "10"
+  POLL_INTERVAL_SECS: "5"
+  SCRIPT_TIMEOUT_SECS: "300"
+  RUST_LOG: "vulcan_worker=debug"
+  # Sandbox disabled in kind — bwrap can't mount /proc inside nested containers.
+  # Scripts run directly via /bin/sh -c. Sandbox isolation tested in production.
+  SANDBOX_ENABLED: "false"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vulcan-worker
+  namespace: vulcan
+  labels:
+    app: vulcan-worker
+spec:
+  replicas: 0
+  selector:
+    matchLabels:
+      app: vulcan-worker
+  template:
+    metadata:
+      labels:
+        app: vulcan-worker
+    spec:
+      automountServiceAccountToken: false
+      containers:
+        - name: vulcan-worker
+          image: vulcan-worker:dev
+          imagePullPolicy: Never
+          envFrom:
+            - configMapRef:
+                name: worker-config
+          securityContext:
+            runAsUser: 1000
+            runAsGroup: 1000
+            runAsNonRoot: true
+            readOnlyRootFilesystem: true
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+              add:
+                - KILL
+          volumeMounts:
+            - name: scratch
+              mountPath: /scratch
+            - name: tmp
+              mountPath: /tmp
+          resources:
+            requests:
+              cpu: 250m
+              memory: 128Mi
+            limits:
+              cpu: "2"
+              memory: 1Gi
+      volumes:
+        - name: scratch
+          emptyDir:
+            medium: Memory
+            sizeLimit: 512Mi
+        - name: tmp
+          emptyDir:
+            medium: Memory
+            sizeLimit: 64Mi

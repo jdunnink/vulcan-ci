@@ -62,6 +62,7 @@ Deployable binaries that make up the system:
 | `vulcan-api` | Main API for managing workflows and workers |
 | `vulcan-worker` | Executes individual workflow fragments |
 | `vulcan-worker-orchestrator` | Coordinates work distribution across workers |
+| `vulcan-worker-controller` | Kubernetes auto-scaler for worker Deployments |
 | `vulcan-workflow-trigger-processor` | Processes Git events and triggers workflows |
 | `vulcan-chain-parser-api` | HTTP API for parsing and storing workflows |
 | `vulcan-chain-parser-cli` | CLI tool for validating workflow files |
@@ -71,8 +72,9 @@ Deployable binaries that make up the system:
 ### Prerequisites
 
 - Rust (Edition 2024)
-- PostgreSQL 15+
-- Docker & Docker Compose (optional, for local database)
+- Docker
+- [kind](https://kind.sigs.k8s.io/) (Kubernetes in Docker)
+- kubectl
 - [Task](https://taskfile.dev/) runner
 
 ### Setup
@@ -88,17 +90,12 @@ Deployable binaries that make up the system:
    cp .env.example .env
    ```
 
-3. Start PostgreSQL:
+3. Start the kind cluster (builds images, deploys all services, runs migrations):
    ```bash
-   task db-up
+   task kind-up
    ```
 
-4. Run database migrations:
-   ```bash
-   task db-migrate
-   ```
-
-5. Build the project:
+4. Build the project (for local cargo development):
    ```bash
    task build
    ```
@@ -135,12 +132,24 @@ task test     # Run tests
 task ci       # Full CI pipeline
 ```
 
+### kind Cluster Tasks
+
+```bash
+task kind-up               # Create cluster with all services
+task kind-down             # Delete the cluster
+task kind-status           # Show all resources
+task kind-logs -- <name>   # Tail logs (e.g., worker-orchestrator)
+task kind-load             # Rebuild all images and reload
+task kind-load-orchestrator # Rebuild just the orchestrator
+task kind-load-worker       # Rebuild just the worker
+task kind-load-controller   # Rebuild just the controller
+task test-scaling           # Run scaling integration test
+```
+
 ### Database Tasks
 
 ```bash
-task db-up      # Start PostgreSQL container
-task db-down    # Stop PostgreSQL container
-task db-reset   # Reset database
+task db-reset   # Reset database (delete PVC, restart, migrate)
 task db-migrate # Run migrations
 task db-psql    # Open psql shell
 ```
@@ -162,33 +171,41 @@ vulcan-ci/
 │       ├── chain-parser-api/        # Parser HTTP service
 │       └── chain-parser-cli/        # Parser CLI tool
 │
+├── k8s/                             # Kubernetes manifests for kind
 ├── migrations/                      # Diesel database migrations
+├── scripts/                         # Development and test scripts
 ├── Cargo.toml                       # Workspace configuration
 ├── Dockerfile                       # Multi-stage build for services
-├── docker-compose.yml               # PostgreSQL + services
+├── Dockerfile.worker                # Hardened build for workers
+├── kind-config.yaml                 # kind cluster configuration
 └── Taskfile.yml                     # Development tasks
 ```
 
-## Docker
+## Local Kubernetes (kind)
 
-Run the full stack with Docker Compose:
+The local development environment runs all services in a kind cluster:
 
 ```bash
-# Start all services
-docker compose up -d
-
-# Run database migrations
-task db-migrate
+# Start the full stack (postgres, orchestrator, workers, controller)
+task kind-up
 
 # Check status
-docker compose ps
+task kind-status
 
 # View logs
-docker compose logs -f worker-orchestrator
+task kind-logs -- worker-orchestrator
 
-# Stop services
-docker compose down
+# Run the scaling integration test
+task test-scaling
+
+# Rebuild a service after code changes
+task kind-load-controller
+
+# Tear down
+task kind-down
 ```
+
+Services are accessible at `localhost:5432` (PostgreSQL) and `localhost:3002` (orchestrator) via NodePort mappings.
 
 ## Status
 
@@ -200,6 +217,7 @@ Vulcan CI is in active development. The core execution engine is complete: libra
 | Parser CLI & API | Complete |
 | Worker Orchestrator | Complete |
 | Worker Service | Complete |
+| Worker Controller | Complete |
 | Trigger Processor | Planned |
 
 See [ROADMAP.md](ROADMAP.md) for detailed implementation status and planned features.

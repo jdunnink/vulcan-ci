@@ -32,6 +32,32 @@ Client K8s Cluster                    Vulcan Infrastructure
 - `KUBECONFIG` set or running in-cluster with appropriate RBAC permissions
 - Orchestrator service accessible from the cluster
 
+### Local Development with kind
+
+The easiest way to run the controller locally is with the kind cluster, which provides a real Kubernetes environment with all services:
+
+```bash
+# Start the full cluster (postgres, orchestrator, controller, workers)
+task kind-up
+
+# Verify everything is running
+task kind-status
+
+# View controller logs
+task kind-logs -- worker-controller
+
+# Run the scaling integration test
+task test-scaling
+
+# Rebuild and reload just the controller after code changes
+task kind-load-controller
+
+# Tear down
+task kind-down
+```
+
+The kind cluster uses reduced polling (10s) and scale-down cooldown (60s) for faster dev feedback. See `k8s/04-controller.yaml` for the full configuration.
+
 ### With Cargo
 
 ```bash

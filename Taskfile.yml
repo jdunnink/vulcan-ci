@@ -94,23 +94,85 @@ tasks:
     cmds:
       - cargo run --package vulcan-workflow-trigger-processor
 
+  # kind cluster tasks
+  kind-up:
+    desc: Create kind cluster with all services
+    cmds:
+      - kind create cluster --config kind-config.yaml
+      - task: kind-build
+      - kind load docker-image vulcan-worker-orchestrator:dev --name vulcan-ci
+      - kind load docker-image vulcan-worker:dev --name vulcan-ci
+      - kind load docker-image vulcan-worker-controller:dev --name vulcan-ci
+      - kubectl apply -f k8s/00-namespace.yaml
+      - kubectl apply -f k8s/
+      - echo "Waiting for PostgreSQL..."
+      - kubectl wait --namespace vulcan --for=condition=ready pod -l app=postgres --timeout=120s
+      - diesel migration run
+      - echo "Waiting for Worker Orchestrator..."
+      - kubectl wait --namespace vulcan --for=condition=ready pod -l app=worker-orchestrator --timeout=120s
+      - kubectl get all -n vulcan
+
+  kind-down:
+    desc: Delete the kind cluster
+    cmds:
+      - kind delete cluster --name vulcan-ci
+
+  kind-build:
+    desc: Build all Docker images for kind
+    cmds:
+      - docker build --build-arg SERVICE=vulcan-worker-orchestrator -t vulcan-worker-orchestrator:dev .
+      - docker build -f Dockerfile.worker -t vulcan-worker:dev .
+      - docker build --build-arg SERVICE=vulcan-worker-controller -t vulcan-worker-controller:dev .
+
+  kind-load:
+    desc: Rebuild images, reload into kind, and restart deployments
+    cmds:
+      - task: kind-build
+      - kind load docker-image vulcan-worker-orchestrator:dev --name vulcan-ci
+      - kind load docker-image vulcan-worker:dev --name vulcan-ci
+      - kind load docker-image vulcan-worker-controller:dev --name vulcan-ci
+      - kubectl rollout restart deployment/worker-orchestrator -n vulcan
+      - kubectl rollout restart deployment/vulcan-worker -n vulcan
+      - kubectl rollout restart deployment/worker-controller -n vulcan
+
+  kind-load-orchestrator:
+    desc: Rebuild and reload the orchestrator image
+    cmds:
+      - docker build --build-arg SERVICE=vulcan-worker-orchestrator -t vulcan-worker-orchestrator:dev .
+      - kind load docker-image vulcan-worker-orchestrator:dev --name vulcan-ci
+      - kubectl rollout restart deployment/worker-orchestrator -n vulcan
+
+  kind-load-worker:
+    desc: Rebuild and reload the worker image
+    cmds:
+      - docker build -f Dockerfile.worker -t vulcan-worker:dev .
+      - kind load docker-image vulcan-worker:dev --name vulcan-ci
+      - kubectl rollout restart deployment/vulcan-worker -n vulcan
+
+  kind-load-controller:
+    desc: Rebuild and reload the worker-controller image
+    cmds:
+      - docker build --build-arg SERVICE=vulcan-worker-controller -t vulcan-worker-controller:dev .
+      - kind load docker-image vulcan-worker-controller:dev --name vulcan-ci
+      - kubectl rollout restart deployment/worker-controller -n vulcan
+
+  kind-status:
+    desc: Show status of all resources in the vulcan namespace
+    cmds:
+      - kubectl get all -n vulcan
+
+  kind-logs:
+    desc: "Tail logs for a deployment (usage: task kind-logs -- worker-orchestrator)"
+    cmds:
+      - kubectl logs -f deployment/{{.CLI_ARGS}} -n vulcan
+
   # Database tasks
-  db-up:
-    desc: Start the PostgreSQL database
-    cmds:
-      - docker compose up -d --wait
-      - docker compose ps
-
-  db-down:
-    desc: Stop the PostgreSQL database
-    cmds:
-      - docker compose down
-
   db-reset:
-    desc: Reset the database (stop, remove volume, start fresh)
+    desc: Reset the database (delete PVC, restart postgres, run migrations)
     cmds:
-      - docker compose down -v
-      - docker compose up -d --wait
+      - kubectl delete pvc postgres-data -n vulcan --ignore-not-found
+      - kubectl rollout restart deployment/postgres -n vulcan
+      - kubectl wait --namespace vulcan --for=condition=ready pod -l app=postgres --timeout=120s
       - diesel migration run
 
   db-migrate:
@@ -126,4 +188,10 @@ tasks:
   db-psql:
     desc: Open psql shell to the database
     cmds:
-      - docker compose exec postgres psql -U vulcan -d vulcan_ci
+      - kubectl exec -it deployment/postgres -n vulcan -- psql -U vulcan -d vulcan_ci
+
+  # Integration test
+  test-scaling:
+    desc: Run the scaling integration test
+    cmds:
+      - bash scripts/test-scaling.sh

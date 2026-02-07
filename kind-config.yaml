@@ -1,0 +1,16 @@
+# kind cluster configuration for Vulcan CI local development
+# Usage: kind create cluster --config kind-config.yaml
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+name: vulcan-ci
+nodes:
+  - role: control-plane
+    extraPortMappings:
+      # PostgreSQL: accessible at localhost:5432 (matches .env DATABASE_URL)
+      - containerPort: 30432
+        hostPort: 5432
+        protocol: TCP
+      # Worker Orchestrator: accessible at localhost:3002
+      - containerPort: 30002
+        hostPort: 3002
+        protocol: TCP
